@@ -1,0 +1,115 @@
+<?php
+// セッションの開始
+session_start();
+?>
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <title>ログイン</title>
+        <link rel="stylesheet" type="text/css" href="./css/css.css"> 
+    </head>
+    <body>
+        <?php
+        try{
+            $pdo = new PDO("                  ");
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+        } catch (PDOException $e){
+            print('Error:'.$e->getMessage());
+            die("<br>DBアクセスでエラーが発生したため、処理を中断しました");
+        }
+        //ログアウトボタンが押された場合、セッションを破棄する
+        if(isset($_POST["logout"])){
+            session_destroy();
+            header("Refresh:0; url=login.php");
+        }
+        // 既にログイン済
+        if(isset($_SESSION["authenticated"]) && $_SESSION["authenticated"] === true){
+            echo "
+                <form action='login.php' method='post'>
+                <p><input type='submit' value='ログアウト' name='logout' class='check'></p>
+                </form>";
+            try{   
+            $stmt=$pdo->prepare("SELECT *
+            FROM reservations
+            LEFT JOIN plans
+            ON reservations.plan_id=plans.plan_id 
+            WHERE ETA >= DATE(NOW())
+            ORDER BY ETA");
+            $stmt->execute();
+            $result = $stmt->fetchall();
+                //予約情報あり
+                if(!empty($result)){
+                    echo "
+                    <table>
+                    <tr>
+                    <th>日時</th>
+                    <th>氏名</th>
+                    <th>人数</th>
+                    <th>電話番号</th>
+                    <th>プラン</th>
+                    </tr>";
+                    foreach($result as $row)
+                    {
+                    $ETA=$row["ETA"];
+                    $name=$row["name"];
+                    $persons=$row["persons"];
+                    $phone=$row["phone_number"];
+                    $pname=$row["plan_name"];
+                    echo"
+                    <tr>
+                    <td>$ETA</td>
+                    <td>$name</td>
+                    <td>$persons</td>
+                    <td>$phone</td>
+                    <td>$pname</td>  
+                    </tr>";
+                    }
+                    echo"</table>";
+                //予約情報なし
+                } else {
+                echo "以降の予約はありません";
+                }
+            } catch (PDOException $e){
+            die("ERROR: Could not prepare/execute query" . $e->getMessage());
+            }
+        }
+        // 認証されておらず、ログイン名とパスワードがnullではない場合
+        // isset()、nullの場合はfalseを返す
+        else if(isset($_POST["login"]) || isset($_POST["pass"])){
+            // 認証されておらずログイン成功
+            if($_POST["login"] === "tester" && $_POST["pass"] === "abcd"){
+                $_SESSION["authenticated"] = true;
+                header("Refresh:0; url=login.php");
+            }
+            // ログイン失敗
+            else {
+                $_SESSION["authenticated"] = false;
+                // ログインフォームを表示
+                $form = "
+                <form action='login.php' method='post'>
+                <input type='text' name='login' class='box-fm'
+                placeholder=' enter your ID' required>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type='password' name='pass' class='box-fm' placeholder=' enter your password' required>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type='submit' value='ログイン' class='check'>
+                </form>";
+                echo $form;
+                echo "<p>アカウント情報に誤りがあります</p>";
+            }
+        }
+        // 認証されておらず、ログイン名かパスワードがnullの場合
+        else {
+            // ログインフォームを表示
+            $form = "
+            <form action='login.php' method='post'>
+                <input type='text' name='login' class='box-fm'
+                placeholder=' enter your ID' required>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type='password' name='pass' class='box-fm' placeholder=' enter your password' required>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type='submit' value='ログイン' class='check'>
+                </form>";
+            echo $form;
+        }
+        ?>
+    </body>
+</html>
